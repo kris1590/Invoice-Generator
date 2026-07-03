@@ -6,12 +6,13 @@ import {
   where,
   onSnapshot,
   addDoc,
-  updateDoc,
+  setDoc,
   deleteDoc,
   doc,
 } from "firebase/firestore";
 import { auth, db } from "./firebase";
 import Login from "./components/Login";
+import Unlock from "./components/Unlock";
 import Sidebar from "./components/Sidebar";
 import InvoiceEditor from "./components/InvoiceEditor";
 import InvoiceDocument from "./components/InvoiceDocument";
@@ -20,9 +21,11 @@ import {
   normalizeInvoice,
   computeTotals,
 } from "./utils";
+import { encryptJSON, decryptJSON } from "./crypto";
 
 export default function App() {
   const [user, setUser] = useState(undefined); // undefined = loading
+  const [cryptoKey, setCryptoKey] = useState(null); // AES key, null = locked
   const [saved, setSaved] = useState([]);
   const [currentId, setCurrentId] = useState(null);
   const [invoice, setInvoice] = useState(() => emptyInvoice(2));
@@ -31,12 +34,19 @@ export default function App() {
   const docRef = useRef(null);
   const statusTimer = useRef(null);
 
-  // ---- Auth ----
-  useEffect(() => onAuthStateChanged(auth, (u) => setUser(u || null)), []);
+  // ---- Auth ---- (clear the in-memory key on sign-out)
+  useEffect(
+    () =>
+      onAuthStateChanged(auth, (u) => {
+        setUser(u || null);
+        if (!u) setCryptoKey(null);
+      }),
+    []
+  );
 
-  // ---- Live subscription to this user's invoices ----
+  // ---- Live subscription to this user's invoices (decrypted client-side) ----
   useEffect(() => {
-    if (!user) {
+    if (!user || !cryptoKey) {
       setSaved([]);
       return;
     }
@@ -47,15 +57,37 @@ export default function App() {
     );
     const unsub = onSnapshot(
       q,
-      (snap) => {
-        const rows = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-        rows.sort((a, b) => (b.savedAt || "").localeCompare(a.savedAt || ""));
-        setSaved(rows);
+      async (snap) => {
+        const rows = await Promise.all(
+          snap.docs.map(async (d) => {
+            const raw = d.data();
+            let data;
+            if (raw.ciphertext) {
+              try {
+                data = await decryptJSON(cryptoKey, raw.iv, raw.ciphertext);
+              } catch {
+                data = null; // wrong key / corrupt — skip below
+              }
+            } else {
+              data = raw.data; // legacy plaintext invoice (pre-encryption)
+            }
+            if (!data) return null;
+            return {
+              id: d.id,
+              savedAt: raw.savedAt,
+              data,
+              net: computeTotals(normalizeInvoice(data)).net,
+            };
+          })
+        );
+        const clean = rows.filter(Boolean);
+        clean.sort((a, b) => (b.savedAt || "").localeCompare(a.savedAt || ""));
+        setSaved(clean);
       },
       (err) => flash("⚠ " + err.message)
     );
     return unsub;
-  }, [user]);
+  }, [user, cryptoKey]);
 
   // Open sidebar by default on desktop.
   useEffect(() => {
@@ -79,19 +111,21 @@ export default function App() {
 
   // ---- Firestore actions ----
   async function save() {
-    if (!user) return;
-    const { net } = computeTotals(invoice);
+    if (!user || !cryptoKey) return;
+    // Encrypt the whole invoice in the browser; only ownerId + savedAt stay
+    // in the clear (needed to query and sort). The project owner sees no
+    // names, amounts, or bank details — just ciphertext.
+    const { iv, ciphertext } = await encryptJSON(cryptoKey, invoice);
     const payload = {
       ownerId: user.uid,
-      data: invoice,
-      invNum: invoice.invNum,
-      invDate: invoice.invDate,
-      net,
+      iv,
+      ciphertext,
       savedAt: new Date().toISOString(),
     };
     try {
       if (currentId) {
-        await updateDoc(doc(db, "invoices", currentId), payload);
+        // setDoc (not updateDoc) so any legacy plaintext fields are removed.
+        await setDoc(doc(db, "invoices", currentId), payload);
       } else {
         const ref = await addDoc(collection(db, "invoices"), payload);
         setCurrentId(ref.id);
@@ -160,6 +194,7 @@ export default function App() {
 
   if (user === undefined) return <div className="loader">Loading…</div>;
   if (user === null) return <Login />;
+  if (!cryptoKey) return <Unlock user={user} onUnlock={setCryptoKey} />;
 
   return (
     <div className="app-shell">
@@ -187,6 +222,7 @@ export default function App() {
             {user.photoURL && <img src={user.photoURL} alt="" referrerPolicy="no-referrer" />}
             <span>{user.displayName || user.email}</span>
           </div>
+          <button onClick={() => setCryptoKey(null)} title="Lock (forget passphrase)">🔒 Lock</button>
           <button onClick={() => signOut(auth)}>Sign out</button>
         </div>
 
