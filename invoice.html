@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Invoice — Anusha B.M</title>
+<style>
+  :root {
+    --ink: #1a1a2e;
+    --muted: #6b7280;
+    --line: #e4e4e7;
+    --accent: #4f46e5;
+    --accent-soft: #eef2ff;
+    --bg: #f4f4f7;
+    --danger: #dc2626;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.45;
+    display: flex;
+    min-height: 100vh;
+  }
+  .main { flex: 1; min-width: 0; }
+
+  /* ---- Saved-invoices sidebar ---- */
+  .sidebar {
+    width: 264px;
+    flex: none;
+    background: #fff;
+    border-right: 1px solid var(--line);
+    position: sticky;
+    top: 0;
+    align-self: flex-start;
+    height: 100vh;
+    overflow-y: auto;
+  }
+  body:not(.sidebar-open) .sidebar { display: none; }
+  .sb-overlay { display: none; }
+  .sb-head {
+    font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .6px;
+    color: var(--muted); padding: 18px 16px 10px;
+    position: sticky; top: 0; background: #fff; border-bottom: 1px solid var(--line);
+  }
+  .sb-list { padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+  .sb-item {
+    border: 1px solid var(--line); border-radius: 8px; padding: 10px 34px 10px 12px;
+    cursor: pointer; position: relative; transition: border-color .15s, background .15s;
+  }
+  .sb-item:hover { border-color: var(--accent); background: var(--accent-soft); }
+  .sb-item.active { border-color: var(--accent); background: var(--accent-soft); }
+  .sb-item .si-title { font-weight: 600; font-size: 14px; }
+  .sb-item .si-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .sb-item .si-total { font-size: 13px; font-weight: 600; color: var(--accent); margin-top: 4px; }
+  .sb-item .si-del {
+    position: absolute; top: 6px; right: 6px; border: none; background: none;
+    color: #cbd5e1; font-size: 17px; line-height: 1; cursor: pointer; padding: 2px 5px; border-radius: 5px;
+  }
+  .sb-item .si-del:hover { color: var(--danger); background: #fef2f2; }
+  .sb-empty { font-size: 13px; color: var(--muted); font-style: italic; padding: 4px; }
+
+  /* ---- PDF export: strip form chrome so the download looks like a document ---- */
+  body.pdf-mode input, body.pdf-mode textarea { border-color: transparent !important; background: transparent !important; }
+  body.pdf-mode .dd-trigger { border-color: transparent !important; box-shadow: none !important; padding-left: 0; }
+  body.pdf-mode .dd-chev, body.pdf-mode .no-print { display: none !important; }
+  .toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: #fff;
+    border-bottom: 1px solid var(--line);
+    padding: 12px 20px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+  }
+  .toolbar .spacer { flex: 1; }
+  .toolbar .status { font-size: 13px; color: var(--muted); margin-right: 8px; }
+  button {
+    font: inherit;
+    font-size: 14px;
+    border: 1px solid var(--line);
+    background: #fff;
+    color: var(--ink);
+    padding: 8px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background .15s, border-color .15s;
+  }
+  button:hover { background: #f9fafb; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.primary:hover { background: #4338ca; }
+  button.ghost-danger { color: var(--danger); border-color: #fca5a5; }
+  button.ghost-danger:hover { background: #fef2f2; }
+  button.small { padding: 5px 10px; font-size: 13px; }
+
+  .page {
+    max-width: 880px;
+    margin: 24px auto;
+    background: #fff;
+    border-radius: var(--radius);
+    box-shadow: 0 1px 3px rgba(0,0,0,.08), 0 8px 24px rgba(0,0,0,.04);
+    padding: 44px 48px;
+  }
+
+  header.inv-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 24px;
+    border-bottom: 2px solid var(--ink);
+    padding-bottom: 20px;
+    margin-bottom: 24px;
+  }
+  .inv-title { font-size: 30px; font-weight: 700; letter-spacing: 1px; margin: 0; }
+  .inv-meta { text-align: right; font-size: 14px; }
+  .inv-meta label { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); margin-bottom: 2px; }
+  .inv-meta .field { margin-bottom: 10px; }
+
+  .parties { display: flex; gap: 32px; margin-bottom: 28px; }
+  .party { flex: 1; }
+  .party h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); margin: 0 0 8px; }
+  .party .box { background: #fafafa; border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; font-size: 14px; }
+  .party .box .name { font-weight: 600; font-size: 15px; margin-bottom: 4px; }
+  .party .box .row { display: flex; justify-content: space-between; gap: 12px; padding: 2px 0; }
+  .party .box .row .k { color: var(--muted); }
+
+  input, select {
+    font: inherit;
+    font-size: 14px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 6px 8px;
+    color: var(--ink);
+    background: #fff;
+    max-width: 100%;
+    height: 34px;
+  }
+  input:focus { outline: 2px solid var(--accent-soft); border-color: var(--accent); }
+
+  /* ---- Custom modern dropdown ---- */
+  .dropdown { position: relative; }
+  .dd-trigger {
+    width: 100%;
+    height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    font: inherit;
+    font-size: 14px;
+    text-align: left;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 6px 10px;
+    background: #fff;
+    color: var(--ink);
+    cursor: pointer;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .dd-trigger:hover { border-color: #c7c7cf; }
+  .dropdown.open .dd-trigger,
+  .dd-trigger:focus-visible {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+    outline: none;
+  }
+  .dd-value { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dd-chev { flex: none; color: var(--muted); transition: transform .2s ease; }
+  .dropdown.open .dd-chev { transform: rotate(180deg); }
+
+  .dd-menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    z-index: 40;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    box-shadow: 0 12px 30px rgba(17,17,40,.14), 0 2px 6px rgba(17,17,40,.06);
+    padding: 5px;
+    opacity: 0;
+    transform: translateY(-4px) scale(.98);
+    transform-origin: top center;
+    pointer-events: none;
+    transition: opacity .15s ease, transform .15s ease;
+  }
+  .dropdown.open .dd-menu {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    pointer-events: auto;
+  }
+  .dd-option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 10px;
+    font-size: 14px;
+    border-radius: 7px;
+    cursor: pointer;
+    color: var(--ink);
+    transition: background .1s;
+  }
+  .dd-option:hover, .dd-option.active { background: var(--accent-soft); }
+  .dd-option.selected { color: var(--accent); font-weight: 600; }
+  .dd-check { flex: none; color: var(--accent); opacity: 0; transition: opacity .1s; }
+  .dd-option.selected .dd-check { opacity: 1; }
+  input[type="number"] { width: 100%; }
+  input.inv-num { width: 90px; text-align: right; }
+
+  section.inv-section { margin-bottom: 30px; }
+  .sec-head {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--accent-soft);
+    border-left: 4px solid var(--accent);
+    padding: 10px 14px;
+    border-radius: 6px;
+    margin-bottom: 12px;
+  }
+  .sec-head h2 { font-size: 15px; margin: 0; font-weight: 600; }
+
+  .client-card {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin-bottom: 12px;
+  }
+  .client-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px 14px;
+    align-items: end;
+  }
+  .fg { display: flex; flex-direction: column; gap: 3px; }
+  .fg label { font-size: 11px; text-transform: uppercase; letter-spacing: .4px; color: var(--muted); }
+  .fg input, .fg select { width: 100%; }
+  .client-foot {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid var(--line);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .line-total { font-weight: 600; font-size: 15px; white-space: nowrap; }
+  .line-total .lt-label { color: var(--muted); font-weight: 400; font-size: 11px; text-transform: uppercase; letter-spacing: .4px; margin-right: 8px; }
+
+  .dates-wrap { margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--line); }
+  .dates-wrap .dl-label { font-size: 11px; text-transform: uppercase; letter-spacing: .4px; color: var(--muted); margin-bottom: 6px; }
+  .dates-grid { display: flex; flex-wrap: wrap; gap: 10px; }
+  .dates-grid .di { display: flex; flex-direction: column; gap: 2px; }
+  .dates-grid .di span { font-size: 11px; color: var(--muted); }
+
+  .empty-hint { font-size: 13px; color: var(--muted); font-style: italic; padding: 6px 2px 0; }
+
+  .totals { margin-top: 20px; display: flex; justify-content: flex-end; }
+  .totals table { border-collapse: collapse; min-width: 320px; }
+  .totals td { padding: 6px 10px; font-size: 14px; }
+  .totals td.k { color: var(--muted); text-align: right; }
+  .totals td.v { text-align: right; font-variant-numeric: tabular-nums; }
+  .totals tr.grand td { font-size: 18px; font-weight: 700; border-top: 2px solid var(--ink); padding-top: 10px; }
+
+  .notes { margin-top: 28px; font-size: 13px; color: var(--muted); }
+  .notes textarea { width: 100%; font: inherit; font-size: 13px; border: 1px solid var(--line); border-radius: 6px; padding: 8px; min-height: 60px; resize: vertical; }
+
+  /* Sidebar becomes an off-canvas drawer on smaller screens */
+  @media (max-width: 819px) {
+    .sidebar {
+      position: fixed;
+      top: 0; left: 0; bottom: 0;
+      height: 100vh;
+      width: 280px;
+      max-width: 84vw;
+      z-index: 60;
+      box-shadow: 0 0 40px rgba(0,0,0,.28);
+    }
+    body.sidebar-open .sb-overlay {
+      display: block;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.45);
+      z-index: 55;
+    }
+  }
+
+  @media (max-width: 760px) {
+    .toolbar { padding: 10px 12px; gap: 6px; }
+    .toolbar button { padding: 7px 11px; font-size: 13px; }
+    .toolbar .status { width: 100%; margin: 2px 0 0; }
+    .page { padding: 22px 16px; margin: 14px auto; }
+    .inv-title { font-size: 26px; }
+    .parties { flex-direction: column; gap: 18px; }
+    .client-grid { grid-template-columns: 1fr 1fr; }
+    header.inv-head { flex-direction: column; }
+    .inv-meta { text-align: left; }
+    .totals { justify-content: stretch; }
+    .totals table { min-width: 0; width: 100%; }
+  }
+
+  @media (max-width: 460px) {
+    .client-grid { grid-template-columns: 1fr; }
+    .sec-head { flex-wrap: wrap; gap: 8px; }
+    .page { padding: 18px 13px; }
+  }
+
+  @media print {
+    .toolbar, .no-print { display: none !important; }
+    body { background: #fff; }
+    .page { box-shadow: none; margin: 0; max-width: none; border-radius: 0; padding: 0; }
+    input, textarea { border: none !important; background: transparent !important; -webkit-appearance: none; appearance: none; padding-left: 0; }
+    .dd-trigger { border: none !important; padding-left: 0; box-shadow: none !important; }
+    .dd-chev, .dd-menu { display: none !important; }
+    .client-card, .sec-head, .party .box { break-inside: avoid; }
+    .dates-wrap { border-top: 1px solid var(--line); }
+  }
+</style>
+</head>
+<body>
+
+<aside class="sidebar no-print" id="sidebar">
+  <div class="sb-head">Saved Invoices</div>
+  <div class="sb-list" id="savedList"></div>
+</aside>
+<div class="sb-overlay no-print" id="sbOverlay"></div>
+
+<div class="main" id="main">
+
+<div class="toolbar no-print">
+  <button id="btnSidebar" title="Show / hide saved invoices">☰ Saved</button>
+  <button class="primary" id="btnSave">💾 Save</button>
+  <button id="btnNew">＋ New Invoice</button>
+  <button id="btnPdf">⬇ Download PDF</button>
+  <span class="spacer"></span>
+  <span class="status" id="status"></span>
+</div>
+
+<div class="page" id="page">
+  <header class="inv-head">
+    <div>
+      <h1 class="inv-title">INVOICE</h1>
+      <div style="font-size:14px;color:var(--muted);margin-top:4px;">Anusha B.M</div>
+    </div>
+    <div class="inv-meta">
+      <div class="field">
+        <label>Invoice No.</label>
+        <input type="text" class="inv-num" id="invNum" value="2" />
+      </div>
+      <div class="field">
+        <label>Date</label>
+        <input type="date" id="invDate" />
+      </div>
+    </div>
+  </header>
+
+  <div class="parties">
+    <div class="party">
+      <h3>Billed To</h3>
+      <div class="box">
+        <div class="name">Manushee</div>
+        <div>Plot No. 55, IP Extension</div>
+        <div>Delhi 110092</div>
+      </div>
+    </div>
+    <div class="party">
+      <h3>Payable To</h3>
+      <div class="box">
+        <div class="name">Anusha B.M</div>
+        <div class="row"><span class="k">Account No.</span><span>50100722584595</span></div>
+        <div class="row"><span class="k">IFSC Code</span><span>HDFC0004051</span></div>
+        <div class="row"><span class="k">PAN No.</span><span>AUQPA7613P</span></div>
+      </div>
+    </div>
+  </div>
+
+  <section class="inv-section" data-section="somatic">
+    <div class="sec-head">
+      <h2>1 &nbsp;·&nbsp; Somatic Individual Therapy Session</h2>
+      <button class="small no-print add-client" data-target="somatic">＋ Add Client</button>
+    </div>
+    <div class="clients" id="clients-somatic"></div>
+  </section>
+
+  <section class="inv-section" data-section="consultation">
+    <div class="sec-head">
+      <h2>2 &nbsp;·&nbsp; Consultation for Somatic Individual Therapy</h2>
+      <button class="small no-print add-client" data-target="consultation">＋ Add Client</button>
+    </div>
+    <div class="clients" id="clients-consultation"></div>
+  </section>
+
+  <div class="totals">
+    <table>
+      <tr><td class="k">Somatic Therapy Subtotal</td><td class="v" id="sub-somatic">₹0.00</td></tr>
+      <tr><td class="k">Consultation Subtotal</td><td class="v" id="sub-consultation">₹0.00</td></tr>
+      <tr><td class="k">Gross Total</td><td class="v" id="gross-total">₹0.00</td></tr>
+      <tr><td class="k">Platform Fee (15%)</td><td class="v" id="platform-fee">−₹0.00</td></tr>
+      <tr class="grand"><td class="k">Net Payable</td><td class="v" id="grand-total">₹0.00</td></tr>
+    </table>
+  </div>
+
+  <div class="notes">
+    <label style="display:block;margin-bottom:6px;font-size:11px;text-transform:uppercase;letter-spacing:.4px;">Notes</label>
+    <textarea id="notes" placeholder="Optional notes (payment terms, thank-you message, etc.)"></textarea>
+  </div>
+</div>
+
+</div><!-- /main -->
+
+<template id="tpl-client">
+  <div class="client-card" data-client>
+    <div class="client-grid">
+      <div class="fg">
+        <label>Client Name</label>
+        <input type="text" data-f="name" placeholder="Full name" />
+      </div>
+      <div class="fg">
+        <label>Paid By</label>
+        <div class="dropdown" data-dropdown>
+          <button type="button" class="dd-trigger">
+            <span class="dd-value"></span>
+            <svg class="dd-chev" width="12" height="8" viewBox="0 0 12 8" fill="none"><path d="M1 1.5L6 6.5L11 1.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="dd-menu" role="listbox">
+            <div class="dd-option" data-value="Client"><span>Client</span><svg class="dd-check" width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2.5 7.5L5.5 10.5L11.5 3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+            <div class="dd-option" data-value="Other"><span>Other</span><svg class="dd-check" width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2.5 7.5L5.5 10.5L11.5 3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          </div>
+          <input type="hidden" data-f="paidBy" value="Client" />
+        </div>
+      </div>
+      <div class="fg">
+        <label>Mode of Payment</label>
+        <div class="dropdown" data-dropdown>
+          <button type="button" class="dd-trigger">
+            <span class="dd-value"></span>
+            <svg class="dd-chev" width="12" height="8" viewBox="0 0 12 8" fill="none"><path d="M1 1.5L6 6.5L11 1.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="dd-menu" role="listbox">
+            <div class="dd-option" data-value="Bank transfer"><span>Bank transfer</span><svg class="dd-check" width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2.5 7.5L5.5 10.5L11.5 3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+            <div class="dd-option" data-value="UPI"><span>UPI</span><svg class="dd-check" width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2.5 7.5L5.5 10.5L11.5 3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+            <div class="dd-option" data-value="Paypal"><span>Paypal</span><svg class="dd-check" width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2.5 7.5L5.5 10.5L11.5 3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+            <div class="dd-option" data-value="Other"><span>Other</span><svg class="dd-check" width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2.5 7.5L5.5 10.5L11.5 3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          </div>
+          <input type="hidden" data-f="mode" value="Bank transfer" />
+        </div>
+      </div>
+      <div class="fg">
+        <label>Amount / Session (₹)</label>
+        <input type="number" data-f="rate" min="0" step="0.01" placeholder="0" />
+      </div>
+      <div class="fg">
+        <label>No. of Sessions</label>
+        <input type="number" data-f="sessions" min="0" step="1" value="1" />
+      </div>
+      <div class="fg">
+        <label>Track By</label>
+        <div class="dropdown" data-dropdown>
+          <button type="button" class="dd-trigger">
+            <span class="dd-value"></span>
+            <svg class="dd-chev" width="12" height="8" viewBox="0 0 12 8" fill="none"><path d="M1 1.5L6 6.5L11 1.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="dd-menu" role="listbox">
+            <div class="dd-option" data-value="Date of Session"><span>Date of Session</span><svg class="dd-check" width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2.5 7.5L5.5 10.5L11.5 3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+            <div class="dd-option" data-value="Date of Payment"><span>Date of Payment</span><svg class="dd-check" width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2.5 7.5L5.5 10.5L11.5 3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          </div>
+          <input type="hidden" data-f="trackBy" value="Date of Session" />
+        </div>
+      </div>
+    </div>
+    <div class="dates-wrap" data-dates-wrap>
+      <div class="dl-label" data-dates-label>Session Dates</div>
+      <div class="dates-grid" data-dates-grid></div>
+    </div>
+    <div class="client-foot">
+      <div class="line-total"><span class="lt-label">Line Total</span><span data-line-total>₹0.00</span></div>
+      <button class="small ghost-danger no-print" data-remove>Remove client</button>
+    </div>
+  </div>
+</template>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script>
+(function () {
+  "use strict";
+  const STORAGE_KEY = "anusha_invoices_v2";
+  const SECTIONS = ["somatic", "consultation"];
+  let currentId = null;
+  const money = n => "₹" + (Number(n) || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  const tpl = document.getElementById("tpl-client");
+  const statusEl = document.getElementById("status");
+
+  function setStatus(msg) {
+    statusEl.textContent = msg;
+    if (msg) setTimeout(() => { if (statusEl.textContent === msg) statusEl.textContent = ""; }, 3000);
+  }
+
+  function todayISO() {
+    const d = new Date();
+    const off = d.getTimezoneOffset();
+    return new Date(d.getTime() - off * 60000).toISOString().slice(0, 10);
+  }
+
+  // ---- Custom dropdown ----
+  function syncDropdown(dd) {
+    const val = dd.querySelector("input[type=hidden]").value;
+    dd.querySelector(".dd-value").textContent = val;
+    dd.querySelectorAll(".dd-option").forEach(opt => {
+      opt.classList.toggle("selected", opt.dataset.value === val);
+    });
+  }
+
+  function initDropdown(dd) {
+    const trigger = dd.querySelector(".dd-trigger");
+    const hidden = dd.querySelector("input[type=hidden]");
+    trigger.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const isOpen = dd.classList.contains("open");
+      closeAllDropdowns();
+      if (!isOpen) dd.classList.add("open");
+    });
+    dd.querySelectorAll(".dd-option").forEach(opt => {
+      opt.addEventListener("click", (e) => {
+        e.stopPropagation();
+        hidden.value = opt.dataset.value;
+        syncDropdown(dd);
+        hidden.dispatchEvent(new Event("change", { bubbles: true }));
+        closeAllDropdowns();
+      });
+    });
+    syncDropdown(dd);
+  }
+
+  function closeAllDropdowns() {
+    document.querySelectorAll(".dropdown.open").forEach(o => o.classList.remove("open"));
+  }
+  document.addEventListener("click", closeAllDropdowns);
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeAllDropdowns(); });
+
+  function updateEmptyHints() {
+    SECTIONS.forEach(section => {
+      const container = document.getElementById("clients-" + section);
+      let hint = container.querySelector(".empty-hint");
+      const hasClients = container.querySelector("[data-client]");
+      if (!hasClients && !hint) {
+        hint = document.createElement("div");
+        hint.className = "empty-hint no-print";
+        hint.textContent = "No clients yet — use “＋ Add Client”.";
+        container.appendChild(hint);
+      } else if (hasClients && hint) {
+        hint.remove();
+      }
+    });
+  }
+
+  // ---- Client row logic ----
+  function addClient(section, data) {
+    const node = tpl.content.firstElementChild.cloneNode(true);
+    const container = document.getElementById("clients-" + section);
+    container.appendChild(node);
+
+    if (data) {
+      node.querySelector('[data-f="name"]').value = data.name || "";
+      node.querySelector('[data-f="paidBy"]').value = data.paidBy || "Client";
+      node.querySelector('[data-f="mode"]').value = data.mode || "Bank transfer";
+      node.querySelector('[data-f="rate"]').value = data.rate ?? "";
+      node.querySelector('[data-f="sessions"]').value = data.sessions ?? 1;
+      node.querySelector('[data-f="trackBy"]').value = data.trackBy || "Date of Session";
+    }
+
+    node.querySelectorAll("[data-dropdown]").forEach(initDropdown);
+
+    node.querySelector('[data-remove]').addEventListener("click", () => {
+      node.remove();
+      updateEmptyHints();
+      recalc();
+    });
+
+    const sessionsInput = node.querySelector('[data-f="sessions"]');
+    const trackBy = node.querySelector('[data-f="trackBy"]');
+    sessionsInput.addEventListener("input", () => { buildDates(node); recalc(); });
+    trackBy.addEventListener("change", () => buildDatesLabel(node));
+
+    buildDates(node, data ? data.dates : null);
+    buildDatesLabel(node);
+    updateEmptyHints();
+    return node;
+  }
+
+  function buildDatesLabel(node) {
+    const track = node.querySelector('[data-f="trackBy"]').value;
+    node.querySelector('[data-dates-label]').textContent = track + " Dates";
+  }
+
+  function buildDates(node, existing) {
+    const n = Math.max(0, parseInt(node.querySelector('[data-f="sessions"]').value, 10) || 0);
+    const grid = node.querySelector('[data-dates-grid]');
+    const wrap = node.querySelector('[data-dates-wrap]');
+    // preserve dates already entered so typing session count doesn't wipe them
+    const prev = Array.from(grid.querySelectorAll('input[type="date"]')).map(i => i.value);
+    const source = (existing && existing.length) ? existing : prev;
+    grid.innerHTML = "";
+    wrap.style.display = n > 0 ? "block" : "none";
+    for (let i = 0; i < n; i++) {
+      const di = document.createElement("div");
+      di.className = "di";
+      const span = document.createElement("span");
+      span.textContent = "#" + (i + 1);
+      const inp = document.createElement("input");
+      inp.type = "date";
+      inp.value = source[i] || "";
+      di.appendChild(span);
+      di.appendChild(inp);
+      grid.appendChild(di);
+    }
+    buildDatesLabel(node);
+  }
+
+  // ---- Totals ----
+  function recalc() {
+    let grand = 0;
+    SECTIONS.forEach(section => {
+      let sub = 0;
+      document.querySelectorAll("#clients-" + section + " [data-client]").forEach(card => {
+        const rate = Number(card.querySelector('[data-f="rate"]').value) || 0;
+        const sessions = parseInt(card.querySelector('[data-f="sessions"]').value, 10) || 0;
+        const total = rate * sessions;
+        card.querySelector("[data-line-total]").textContent = money(total);
+        sub += total;
+      });
+      document.getElementById("sub-" + section).textContent = money(sub);
+      grand += sub;
+    });
+    const fee = grand * 0.15;
+    document.getElementById("gross-total").textContent = money(grand);
+    document.getElementById("platform-fee").textContent = "−" + money(fee);
+    document.getElementById("grand-total").textContent = money(grand - fee);
+  }
+
+  // ---- Serialize / Restore ----
+  function collect() {
+    const data = {
+      invNum: document.getElementById("invNum").value,
+      invDate: document.getElementById("invDate").value,
+      notes: document.getElementById("notes").value,
+      sections: {}
+    };
+    SECTIONS.forEach(section => {
+      data.sections[section] = Array.from(
+        document.querySelectorAll("#clients-" + section + " [data-client]")
+      ).map(card => ({
+        name: card.querySelector('[data-f="name"]').value,
+        paidBy: card.querySelector('[data-f="paidBy"]').value,
+        mode: card.querySelector('[data-f="mode"]').value,
+        rate: card.querySelector('[data-f="rate"]').value,
+        sessions: card.querySelector('[data-f="sessions"]').value,
+        trackBy: card.querySelector('[data-f="trackBy"]').value,
+        dates: Array.from(card.querySelectorAll('[data-dates-grid] input[type="date"]')).map(i => i.value)
+      }));
+    });
+    return data;
+  }
+
+  function restore(data) {
+    document.getElementById("invNum").value = data.invNum ?? "2";
+    document.getElementById("invDate").value = data.invDate || todayISO();
+    document.getElementById("notes").value = data.notes || "";
+    SECTIONS.forEach(section => {
+      document.getElementById("clients-" + section).innerHTML = "";
+      const rows = (data.sections && data.sections[section]) || [];
+      rows.forEach(r => addClient(section, r));
+    });
+    updateEmptyHints();
+    recalc();
+  }
+
+  // ---- Persistence: a list of saved invoices in localStorage ----
+  function loadAll() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      const arr = raw ? JSON.parse(raw) : [];
+      return Array.isArray(arr) ? arr : [];
+    } catch (e) { return []; }
+  }
+  function persistAll(list) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+  }
+  function newId() {
+    return "inv_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  }
+
+  function computeNet(data) {
+    let gross = 0;
+    SECTIONS.forEach(s => ((data.sections && data.sections[s]) || []).forEach(r => {
+      gross += (Number(r.rate) || 0) * (parseInt(r.sessions, 10) || 0);
+    }));
+    return gross * 0.85;
+  }
+
+  function save() {
+    const data = collect();
+    const list = loadAll();
+    const savedAt = new Date().toISOString();
+    const existing = currentId && list.find(e => e.id === currentId);
+    if (existing) {
+      existing.data = data;
+      existing.savedAt = savedAt;
+    } else {
+      currentId = newId();
+      list.unshift({ id: currentId, data, savedAt });
+    }
+    persistAll(list);
+    renderSidebar();
+    setStatus("✓ Saved");
+  }
+
+  function renderSidebar() {
+    const list = loadAll();
+    const holder = document.getElementById("savedList");
+    holder.innerHTML = "";
+    if (!list.length) {
+      const empty = document.createElement("div");
+      empty.className = "sb-empty";
+      empty.textContent = "No saved invoices yet. Click Save to store one.";
+      holder.appendChild(empty);
+      return;
+    }
+    list.forEach(entry => {
+      const d = entry.data || {};
+      const item = document.createElement("div");
+      item.className = "sb-item" + (entry.id === currentId ? " active" : "");
+      const when = new Date(entry.savedAt);
+      const whenStr = isNaN(when) ? "" : when.toLocaleString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+      item.innerHTML =
+        '<div class="si-title">Invoice #' + (d.invNum || "—") + '</div>' +
+        '<div class="si-sub">' + (d.invDate || "no date") + '</div>' +
+        '<div class="si-total">Net ' + money(computeNet(d)) + '</div>' +
+        '<div class="si-sub">Saved ' + whenStr + '</div>' +
+        '<button class="si-del" title="Delete">×</button>';
+      item.addEventListener("click", () => {
+        currentId = entry.id;
+        restore(entry.data);
+        renderSidebar();
+        setStatus("✓ Loaded Invoice #" + (d.invNum || ""));
+        if (window.innerWidth < 820) document.body.classList.remove("sidebar-open");
+      });
+      item.querySelector(".si-del").addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (!confirm("Delete saved Invoice #" + (d.invNum || "") + "?")) return;
+        const next = loadAll().filter(x => x.id !== entry.id);
+        persistAll(next);
+        if (currentId === entry.id) currentId = null;
+        renderSidebar();
+        setStatus("Deleted");
+      });
+      holder.appendChild(item);
+    });
+  }
+
+  function blankInvoice() {
+    currentId = null;
+    restore({ invNum: nextInvoiceNumber(), invDate: todayISO(), notes: "", sections: {
+      somatic: [{ mode: "Bank transfer", sessions: 1, trackBy: "Date of Session" }],
+      consultation: []
+    }});
+    renderSidebar();
+  }
+
+  // Suggest the next invoice number based on the highest saved one (min 2).
+  function nextInvoiceNumber() {
+    let max = 1;
+    loadAll().forEach(e => {
+      const n = parseInt((e.data && e.data.invNum) || "", 10);
+      if (!isNaN(n) && n > max) max = n;
+    });
+    return String(max + 1);
+  }
+
+  // ---- PDF download ----
+  function downloadPDF() {
+    closeAllDropdowns();
+    const num = document.getElementById("invNum").value || "invoice";
+    const el = document.getElementById("page");
+    if (typeof html2pdf === "undefined") {
+      // library unavailable (e.g. offline) — fall back to the print dialog
+      window.print();
+      return;
+    }
+    document.body.classList.add("pdf-mode");
+    setStatus("Generating PDF…");
+    html2pdf().set({
+      margin: 10,
+      filename: "invoice-" + num + ".pdf",
+      image: { type: "jpeg", quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true, backgroundColor: "#ffffff" },
+      jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+      pagebreak: { mode: ["css", "legacy"] }
+    }).from(el).save().then(() => {
+      document.body.classList.remove("pdf-mode");
+      setStatus("✓ PDF downloaded");
+    }).catch(() => {
+      document.body.classList.remove("pdf-mode");
+      setStatus("⚠ PDF failed — using print instead");
+      window.print();
+    });
+  }
+
+  // ---- Toolbar ----
+  document.getElementById("btnSave").addEventListener("click", save);
+  document.getElementById("btnNew").addEventListener("click", () => {
+    if (confirm("Start a new blank invoice? Unsaved changes will be lost.")) blankInvoice();
+  });
+  document.getElementById("btnPdf").addEventListener("click", downloadPDF);
+  document.getElementById("btnSidebar").addEventListener("click", () => {
+    document.body.classList.toggle("sidebar-open");
+  });
+  document.getElementById("sbOverlay").addEventListener("click", () => {
+    document.body.classList.remove("sidebar-open");
+  });
+
+  document.querySelectorAll(".add-client").forEach(btn => {
+    btn.addEventListener("click", () => { addClient(btn.dataset.target); recalc(); });
+  });
+
+  // recalc on any input change across the sheet
+  document.getElementById("page").addEventListener("input", recalc);
+
+  // ---- Init: load most recent saved invoice if any, else a blank one ----
+  // Sidebar starts open on desktop, closed (as a drawer) on mobile.
+  if (window.innerWidth >= 820) document.body.classList.add("sidebar-open");
+  const all = loadAll();
+  if (all.length) {
+    currentId = all[0].id;
+    restore(all[0].data);
+  } else {
+    blankInvoice();
+  }
+  renderSidebar();
+})();
+</script>
+</body>
+</html>
