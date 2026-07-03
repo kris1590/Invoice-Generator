@@ -114,8 +114,8 @@ header.inv-head {
 }
 .inv-title { font-size: 30px; font-weight: 700; letter-spacing: 1px; margin: 0; }
 .inv-meta { text-align: right; font-size: 14px; }
-.inv-meta label { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); margin-bottom: 2px; }
-.inv-meta .field { margin-bottom: 10px; }
+.inv-meta label { font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); white-space: nowrap; }
+.inv-meta .field { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-bottom: 10px; }
 
 .parties { display: flex; gap: 32px; margin-bottom: 28px; }
 .party { flex: 1; }
@@ -323,6 +323,7 @@ section.inv-section { margin-bottom: 30px; }
   .client-grid { grid-template-columns: 1fr 1fr; }
   header.inv-head { flex-direction: column; }
   .inv-meta { text-align: left; }
+  .inv-meta .field { justify-content: flex-start; }
   .totals { justify-content: stretch; }
   .totals table { min-width: 0; width: 100%; }
 }
