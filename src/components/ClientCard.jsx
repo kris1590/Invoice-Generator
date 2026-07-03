@@ -1,7 +1,9 @@
+import { useState } from "react";
 import Dropdown from "./Dropdown";
 import { money, lineTotal, syncDates } from "../utils";
 
 export default function ClientCard({ client, onChange, onRemove }) {
+  const [collapsed, setCollapsed] = useState(false);
   // Update a field; keep the dates array in sync when session count changes.
   const set = (patch) => {
     const next = { ...client, ...patch };
@@ -18,7 +20,31 @@ export default function ClientCard({ client, onChange, onRemove }) {
   const sessions = Math.max(0, parseInt(client.sessions, 10) || 0);
 
   return (
-    <div className="client-card">
+    <div className={"client-card" + (collapsed ? " collapsed" : "")}>
+      <div className="client-head no-print">
+        <button
+          type="button"
+          className="cc-toggle"
+          onClick={() => setCollapsed((c) => !c)}
+          title={collapsed ? "Expand" : "Collapse"}
+        >
+          <svg
+            className="cc-chev"
+            width="12"
+            height="8"
+            viewBox="0 0 12 8"
+            fill="none"
+            style={{ transform: collapsed ? "rotate(-90deg)" : "none" }}
+          >
+            <path d="M1 1.5L6 6.5L11 1.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          <span className="cc-name">{client.name || "Unnamed client"}</span>
+        </button>
+        <span className="cc-total">{money(lineTotal(client))}</span>
+      </div>
+
+      {collapsed ? null : (
+      <>
       <div className="client-grid">
         <div className="fg">
           <label>Client Name</label>
@@ -103,6 +129,8 @@ export default function ClientCard({ client, onChange, onRemove }) {
           Remove client
         </button>
       </div>
+      </>
+      )}
     </div>
   );
 }

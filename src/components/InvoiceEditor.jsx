@@ -10,8 +10,9 @@ export default function InvoiceEditor({ invoice, setInvoice, pageRef }) {
       sections: { ...invoice.sections, [section]: clients },
     });
 
+  // Prepend so the newest client shows at the top of the section.
   const addClient = (section) =>
-    setSection(section, [...(invoice.sections[section] || []), newClient()]);
+    setSection(section, [newClient(), ...(invoice.sections[section] || [])]);
 
   const updateClient = (section, id, next) =>
     setSection(

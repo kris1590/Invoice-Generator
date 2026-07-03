@@ -227,6 +227,33 @@ section.inv-section { margin-bottom: 30px; }
   padding: 14px 16px;
   margin-bottom: 12px;
 }
+.client-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.client-card.collapsed .client-head { margin-bottom: 0; }
+.cc-toggle {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: none;
+  background: none;
+  padding: 4px 2px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  text-align: left;
+}
+.cc-toggle:hover { background: none; color: var(--accent); }
+.cc-chev { flex: none; color: var(--muted); transition: transform .15s ease; }
+.cc-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cc-total { flex: none; font-weight: 600; font-size: 14px; color: var(--accent); white-space: nowrap; }
+
 .client-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
