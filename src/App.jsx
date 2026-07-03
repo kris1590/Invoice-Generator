@@ -14,6 +14,7 @@ import { auth, db } from "./firebase";
 import Login from "./components/Login";
 import Sidebar from "./components/Sidebar";
 import InvoiceEditor from "./components/InvoiceEditor";
+import InvoiceDocument from "./components/InvoiceDocument";
 import {
   emptyInvoice,
   normalizeInvoice,
@@ -27,6 +28,7 @@ export default function App() {
   const [invoice, setInvoice] = useState(() => emptyInvoice(2));
   const [status, setStatus] = useState("");
   const pageRef = useRef(null);
+  const docRef = useRef(null);
   const statusTimer = useRef(null);
 
   // ---- Auth ----
@@ -125,24 +127,23 @@ export default function App() {
   }
 
   async function downloadPDF() {
-    const el = pageRef.current;
+    const el = docRef.current; // render from the clean invoice document
     const num = invoice.invNum || "invoice";
     // Filename format: number-mm-yy.pdf (month/year from the invoice date).
     let filename = num + ".pdf";
     const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(invoice.invDate || "");
     if (m) filename = `${num}-${m[2]}-${m[1].slice(2)}.pdf`;
     const { default: html2pdf } = await import("html2pdf.js");
-    document.body.classList.add("pdf-mode");
     flash("Generating PDF…");
     try {
       await html2pdf()
         .set({
-          margin: 10,
+          margin: 0,
           filename,
           image: { type: "jpeg", quality: 0.98 },
           html2canvas: { scale: 2, useCORS: true, backgroundColor: "#ffffff" },
           jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-          pagebreak: { mode: ["css", "legacy"] },
+          pagebreak: { mode: ["css", "legacy"], avoid: ["tr", ".doc-party"] },
         })
         .from(el)
         .save();
@@ -150,8 +151,6 @@ export default function App() {
     } catch (e) {
       flash("⚠ PDF failed — using print");
       window.print();
-    } finally {
-      document.body.classList.remove("pdf-mode");
     }
   }
 
@@ -192,6 +191,11 @@ export default function App() {
           setInvoice={setInvoice}
           pageRef={pageRef}
         />
+      </div>
+
+      {/* Off-screen clean invoice used only as the PDF source */}
+      <div className="pdf-doc-holder" aria-hidden="true">
+        <InvoiceDocument invoice={invoice} ref={docRef} />
       </div>
     </div>
   );

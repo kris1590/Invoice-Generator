@@ -293,6 +293,91 @@ section.inv-section { margin-bottom: 30px; }
 
 .loader { min-height: 100vh; display: flex; align-items: center; justify-content: center; color: var(--muted); }
 
+/* ---- Printable invoice document (source for the PDF) ---- */
+.pdf-doc-holder {
+  position: absolute;
+  left: -10000px;
+  top: 0;
+  width: 794px; /* ~A4 width at 96dpi */
+}
+.doc {
+  width: 794px;
+  background: #fff;
+  color: var(--ink);
+  padding: 48px 52px;
+  font-size: 13px;
+  line-height: 1.5;
+  box-sizing: border-box;
+}
+.doc-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  border-bottom: 3px solid var(--accent);
+  padding-bottom: 18px;
+  margin-bottom: 24px;
+}
+.doc-title { font-size: 34px; font-weight: 800; letter-spacing: 3px; color: var(--accent); }
+.doc-from { font-size: 15px; font-weight: 600; margin-top: 2px; }
+.doc-meta { text-align: right; }
+.doc-meta-row { display: flex; justify-content: flex-end; gap: 10px; margin-bottom: 4px; }
+.doc-meta-row .k { font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); }
+.doc-meta-row .v { font-weight: 600; min-width: 90px; text-align: right; }
+
+.doc-parties { display: flex; gap: 28px; margin-bottom: 28px; }
+.doc-party { flex: 1; }
+.doc-party-label {
+  font-size: 11px; text-transform: uppercase; letter-spacing: .6px;
+  color: var(--muted); margin-bottom: 6px; font-weight: 600;
+}
+.doc-party-name { font-weight: 700; font-size: 14px; margin-bottom: 3px; }
+.doc-kv { display: flex; justify-content: space-between; gap: 12px; }
+.doc-kv span:first-child { color: var(--muted); }
+
+.doc-table { width: 100%; border-collapse: collapse; margin-bottom: 22px; }
+.doc-table thead th {
+  text-align: left;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  color: #fff;
+  background: var(--accent);
+  padding: 9px 12px;
+  font-weight: 600;
+}
+.doc-table th.c-num, .doc-table td.c-num { text-align: right; white-space: nowrap; }
+.doc-table td { padding: 9px 12px; vertical-align: top; border-bottom: 1px solid var(--line); }
+.doc-section-row td {
+  background: var(--accent-soft);
+  font-weight: 700;
+  font-size: 12px;
+  color: var(--accent);
+  border-bottom: 1px solid var(--line);
+}
+.doc-item-name { font-weight: 600; }
+.doc-item-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.doc-subtotal-row td { font-weight: 600; border-bottom: 2px solid #d4d4d8; }
+.doc-subtotal-row .k { text-align: right; color: var(--muted); text-transform: uppercase; font-size: 11px; letter-spacing: .4px; }
+.doc-empty { text-align: center; color: var(--muted); font-style: italic; }
+
+.doc-totals-wrap { display: flex; justify-content: flex-end; margin-bottom: 24px; }
+.doc-totals { border-collapse: collapse; min-width: 300px; }
+.doc-totals td { padding: 6px 12px; }
+.doc-totals td.k { color: var(--muted); text-align: right; }
+.doc-totals td.v { text-align: right; font-variant-numeric: tabular-nums; }
+.doc-totals tr.grand td {
+  font-size: 17px;
+  font-weight: 800;
+  border-top: 2px solid var(--ink);
+  padding-top: 10px;
+  color: var(--accent);
+}
+
+.doc-notes { border-top: 1px solid var(--line); padding-top: 14px; margin-bottom: 18px; }
+.doc-notes-label { font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); margin-bottom: 4px; font-weight: 600; }
+.doc-notes-body { white-space: pre-wrap; }
+.doc-foot { text-align: center; color: var(--muted); font-size: 12px; border-top: 1px solid var(--line); padding-top: 16px; }
+
 /* Sidebar drawer on smaller screens */
 @media (max-width: 819px) {
   .sidebar {
