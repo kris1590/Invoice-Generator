@@ -4,7 +4,6 @@ import {
   collection,
   query,
   where,
-  orderBy,
   onSnapshot,
   addDoc,
   updateDoc,
@@ -39,15 +38,17 @@ export default function App() {
       setSaved([]);
       return;
     }
+    // Sort client-side by savedAt so no composite Firestore index is required.
     const q = query(
       collection(db, "invoices"),
-      where("ownerId", "==", user.uid),
-      orderBy("savedAt", "desc")
+      where("ownerId", "==", user.uid)
     );
     const unsub = onSnapshot(
       q,
       (snap) => {
-        setSaved(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+        const rows = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        rows.sort((a, b) => (b.savedAt || "").localeCompare(a.savedAt || ""));
+        setSaved(rows);
       },
       (err) => flash("⚠ " + err.message)
     );
@@ -126,6 +127,10 @@ export default function App() {
   async function downloadPDF() {
     const el = pageRef.current;
     const num = invoice.invNum || "invoice";
+    // Filename format: number-mm-yy.pdf (month/year from the invoice date).
+    let filename = num + ".pdf";
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(invoice.invDate || "");
+    if (m) filename = `${num}-${m[2]}-${m[1].slice(2)}.pdf`;
     const { default: html2pdf } = await import("html2pdf.js");
     document.body.classList.add("pdf-mode");
     flash("Generating PDF…");
@@ -133,7 +138,7 @@ export default function App() {
       await html2pdf()
         .set({
           margin: 10,
-          filename: "invoice-" + num + ".pdf",
+          filename,
           image: { type: "jpeg", quality: 0.98 },
           html2canvas: { scale: 2, useCORS: true, backgroundColor: "#ffffff" },
           jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
