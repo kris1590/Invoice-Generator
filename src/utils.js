@@ -71,6 +71,7 @@ export function emptyInvoice(invNum) {
   return {
     invNum: String(invNum ?? "2"),
     invDate: todayISO(),
+    therapistName: "Anusha B.M",
     notes: "",
     sections: {
       somatic: [newClient()],
@@ -84,6 +85,7 @@ export function normalizeInvoice(data) {
   const inv = emptyInvoice(data?.invNum);
   inv.invNum = data?.invNum ?? inv.invNum;
   inv.invDate = data?.invDate || inv.invDate;
+  inv.therapistName = data?.therapistName ?? inv.therapistName;
   inv.notes = data?.notes || "";
   SECTIONS.forEach((section) => {
     const rows = (data?.sections && data.sections[section]) || [];

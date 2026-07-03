@@ -32,8 +32,14 @@ export default function InvoiceEditor({ invoice, setInvoice, pageRef }) {
       <header className="inv-head">
         <div>
           <h1 className="inv-title">INVOICE</h1>
-          <div style={{ fontSize: 14, color: "var(--muted)", marginTop: 4 }}>
-            Anusha B.M
+          <div className="fg" style={{ marginTop: 8, maxWidth: 240 }}>
+            <label>Therapist Name</label>
+            <input
+              type="text"
+              placeholder="Therapist name"
+              value={invoice.therapistName || ""}
+              onChange={(e) => setField({ therapistName: e.target.value })}
+            />
           </div>
         </div>
         <div className="inv-meta">
@@ -69,7 +75,7 @@ export default function InvoiceEditor({ invoice, setInvoice, pageRef }) {
         <div className="party">
           <h3>Payable To</h3>
           <div className="box">
-            <div className="name">Anusha B.M</div>
+            <div className="name">{invoice.therapistName || "—"}</div>
             <div className="row"><span className="k">Account No.</span><span>50100722584595</span></div>
             <div className="row"><span className="k">IFSC Code</span><span>HDFC0004051</span></div>
             <div className="row"><span className="k">PAN No.</span><span>AUQPA7613P</span></div>

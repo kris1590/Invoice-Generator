@@ -31,7 +31,7 @@ const InvoiceDocument = forwardRef(function InvoiceDocument({ invoice }, ref) {
       <header className="doc-head">
         <div>
           <div className="doc-title">INVOICE</div>
-          <div className="doc-from">Anusha B.M</div>
+          <div className="doc-from">{invoice.therapistName || ""}</div>
         </div>
         <div className="doc-meta">
           <div className="doc-meta-row">
@@ -54,7 +54,7 @@ const InvoiceDocument = forwardRef(function InvoiceDocument({ invoice }, ref) {
         </div>
         <div className="doc-party">
           <div className="doc-party-label">Payable To</div>
-          <div className="doc-party-name">Anusha B.M</div>
+          <div className="doc-party-name">{invoice.therapistName || "—"}</div>
           <div className="doc-kv"><span>Account No.</span><span>50100722584595</span></div>
           <div className="doc-kv"><span>IFSC Code</span><span>HDFC0004051</span></div>
           <div className="doc-kv"><span>PAN No.</span><span>AUQPA7613P</span></div>

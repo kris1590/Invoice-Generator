@@ -16,7 +16,6 @@ import Sidebar from "./components/Sidebar";
 import InvoiceEditor from "./components/InvoiceEditor";
 import InvoiceDocument from "./components/InvoiceDocument";
 import {
-  SECTIONS,
   emptyInvoice,
   normalizeInvoice,
   computeTotals,
@@ -129,13 +128,11 @@ export default function App() {
 
   async function downloadPDF() {
     const el = docRef.current; // render from the clean invoice document
-    // First name of the first client entered (falls back to the invoice number).
-    const firstClient = SECTIONS.flatMap((s) => invoice.sections[s] || []).find(
-      (c) => (c.name || "").trim()
-    );
-    const firstName = firstClient
-      ? firstClient.name.trim().split(/\s+/)[0]
-      : invoice.invNum || "invoice";
+    // First part of the therapist name (falls back to the invoice number).
+    const firstName =
+      (invoice.therapistName || "").trim().split(/\s+/)[0] ||
+      invoice.invNum ||
+      "invoice";
     // Filename format: INV-FirstName(MM-YY).pdf (month/year from the invoice date).
     const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(invoice.invDate || "");
     const suffix = m ? `(${m[2]}-${m[1].slice(2)})` : "";
